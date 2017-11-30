@@ -1,0 +1,8 @@
+[mysqld]
+server-id = {{ mysql_server_id }}
+read-only = 1
+tmpdir = /var/tmp
+datadir = {{ mysql_datadir }}
+log-error  = {{ mysql_logdir }}/mysql-error.log
+relay-log = {{ mysql_replogdir }}/slave-log-relay
+skip-name-resolve
