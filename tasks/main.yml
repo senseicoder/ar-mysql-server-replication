@@ -1,47 +1,36 @@
 ---
 
-- name: Get OS-specific variables
-  include_vars: "{{ item }}"
-  with_first_found:
-   - "{{ ansible_distribution }}.yml"
-   - "{{ ansible_os_family }}.yml"
-  tags: always
-
-- include: shared-vars.yml
-
-- name: Check if MySQL is already installed
-  stat: path=/etc/init.d/mysql
-  register: mysql_installed
-
-- name: Update apt cache if MySQL is not yet installed
-  apt: update_cache=yes
-  when: mysql_installed.stat.exists == false
-
-- name: Ensure MySQL packages are installed
-  apt: name={{ mysql_pkg }} state=present
-  register: deb_mysql_install_packages
-
-- name: Install Mysql libs for PHP5
-  apt: name=php5-mysql state=present
-
-- name: Ensure Percona TK packages are installed
-  apt: name=percona-toolkit state=present
-
-- name: Ensure MySQL is stopped after initial install
-  service: name=mysql state=stopped
-  when: mysql_installed.stat.exists == true
-  changed_when: false
-
-- name: Delete innodb log files created by apt package after initial install
-  file: path={{ item }} state=absent
-  with_items : [ "{{ mysql_datadir }}/ib_logfile0", "{{ mysql_datadir }}/ib_logfile1" ]
-  when: mysql_installed.stat.exists == false
-
-- name: Check if MySQL packages were installed
+# needed by mysql-replication
+- name: Fact mysql_replication_user
   set_fact:
-    mysql_install_packages: "{{ (deb_mysql_install_packages is defined and deb_mysql_install_packages.changed) }}"
+    mysql_replication_user: "{{ mysql_replication_user }}"
 
-- include: performances.yml
-- include: configure.yml
-- include: secure-installation.yml
+# needed by mysql-replication
+- name: Fact mysql_replication_master
+  set_fact:
+    mysql_replication_master: "{{ mysql_replication_master }}"
 
+# needed by mysql-replication
+- name: Fact mysql_replication_master_ssh
+  set_fact:
+    mysql_replication_master_ssh: "{{ mysql_replication_master_ssh }}"
+
+# needed by mysql-replication
+- name: Fact mysql_replication_role
+  set_fact:
+    mysql_replication_role: "{{ mysql_replication_role }}"
+
+# needed by keepalived
+- name: Fact mysql_root_password
+  set_fact:
+    mysql_root_password: "{{ mysql_root_password }}"
+
+- name: fichier template master
+  set_fact: 
+    templateconf: "master.cnf.j2"
+  when: (mysql_replication_role == 'master' or mysql_replication_role == 'master-master')
+
+- name: fichier template slave
+  set_fact: 
+    templateconf: "slave.cnf.j2"
+  when: (mysql_replication_role == 'slave')
